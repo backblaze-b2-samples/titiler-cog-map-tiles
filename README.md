@@ -23,6 +23,28 @@ Explore the [TiTiler COG Map Tiles project page](https://backblazelabs.com/proje
 - **Geospatial dashboard** — number of layers, total raster bytes in B2, total megapixels, and tiles served.
 - Full-stack scaffold: Next.js 16 + React 19 + Tailwind v4 + shadcn/ui frontend, FastAPI backend with strict layered architecture, an OpenAPI contract test, and agent-optimized docs.
 
+## What it looks like
+
+**Dashboard** — geospatial metrics (COG layers, raster bytes in B2, total megapixels, tiles served), a recent-layers table, and a plain-language "how it works" panel.
+
+![Dashboard with COG layer metrics and recent layers](docs/images/dashboard.png)
+
+**Layer library** — every COG layer in B2 as one row, showing band count, pixel type, zoom range, and size, each served as live XYZ tiles.
+
+![Layer library table listing COG layers](docs/images/layer-library.png)
+
+**New layer** — generate a synthetic georeferenced COG (no data or key needed) or upload a GeoTIFF, with render defaults for band preset and colormap.
+
+![New layer form with generate and upload options](docs/images/new-layer.png)
+
+**Layer map (single band + colormap)** — an elevation COG painted live over San Francisco on Leaflet with a terrain colormap, alongside live rescale/resampling controls and COG info read from B2.
+
+![Elevation COG rendered live on a Leaflet map with render controls](docs/images/layer-map.png)
+
+**Layer map (RGB)** — a three-band COG rendered as an RGB composite from the same B2 byte-ranges, showing the alternate render path with no colormap.
+
+![RGB COG composite rendered live on the map](docs/images/rgb-layer-map.png)
+
 ## Quick Start
 
 You need: Node.js >= 20, pnpm >= 9, Python >= 3.12, and a free **[Backblaze B2 account](https://www.backblaze.com/sign-up/ai-cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-titiler-cog)**. `rasterio` wheels bundle GDAL, so there is **no system GDAL/PROJ install** on macOS arm64 or Linux.
