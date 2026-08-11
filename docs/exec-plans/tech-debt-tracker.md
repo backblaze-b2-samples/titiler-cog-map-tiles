@@ -43,6 +43,13 @@ Low-severity polish, left for a follow-up; none blocks the core flow.
 - 404 route — the breadcrumb title-cases the unknown slug (e.g. "This Route Does Not Exist"), presenting a nonexistent route as a real page name; the rest of the 404 is solid
 - `/design` — the "Go to Upload" button inside the Patterns empty-state demo does not navigate; it is presumably a static sample, but it looks live on a linked primary surface
 
+## 2026-08-11 — verify
+
+Nitpicks surfaced by the 3-lens UX verify pass (blocker/friction fixed in the same run; these are the demoted/cosmetic remainder, none block the core create → view-on-map flow).
+
+- `/layers/[id]` detail — Live render — the Rescale min/max inputs display full-precision floats with a comma decimal separator (e.g. `35,36209869384765`, `766,4247436523438`) → the values read as malformed and are awkward to edit; tiles still render correctly (`.local/verify/B/06-detail-tiles-paint.png`)
+- `/layers` library — the layer list is a plain table (Name / Bands / Type / Zoom / Size) with no per-row tile thumbnail or map preview → no visual proof of each layer at the library level; a small TiTiler thumbnail per row would strengthen it (`.local/verify/B/01-library-populated.png`)
+
 ## Resolved
 
 | Description | Resolution |

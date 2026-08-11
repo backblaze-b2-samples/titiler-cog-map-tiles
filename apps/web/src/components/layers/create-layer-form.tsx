@@ -8,6 +8,7 @@ import type { BandPreset, SampleKind } from "@titiler-cog-map-tiles/shared";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GeneratingLoader } from "@/components/ui/generating-loader";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -46,6 +47,13 @@ export function CreateLayerForm() {
   const [bandPreset, setBandPreset] = useState("auto");
 
   const pending = create.isPending || generate.isPending;
+  // Honest, path-specific in-progress copy driven off the mutation state (not a
+  // separate flag), so the wait reads as live work rather than a frozen button.
+  const stageMessage = generate.isPending
+    ? "Generating a synthetic COG and storing it in B2…"
+    : create.isPending
+      ? "Converting your GeoTIFF to a COG and storing it in B2…"
+      : null;
   const colormapOverride = colormap === "auto" ? undefined : colormap;
   const bandPresetOverride =
     bandPreset === "auto" ? undefined : (bandPreset as BandPreset);
@@ -233,7 +241,13 @@ export function CreateLayerForm() {
         </CardContent>
       </Card>
 
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        {pending && (
+          <div className="mr-auto flex items-center gap-2.5 text-sm text-muted-foreground">
+            <GeneratingLoader size="sm" />
+            <span aria-live="polite">{stageMessage}</span>
+          </div>
+        )}
         <Button type="button" variant="outline" onClick={() => router.push("/layers")}>
           Cancel
         </Button>
