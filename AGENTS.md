@@ -20,6 +20,12 @@ infra/railway/     Deployment config
 infra/vercel/      Vercel deployment contract
 ```
 
+This sample (**TiTiler COG Map Tiles**) adds a COG **Layer** domain on top of the
+starter: `repo/gdal_s3.py`, `repo/cog_reader.py`, `repo/cog_build.py`,
+`repo/cog_seed.py`, `repo/layer_store.py`, `service/layers.py`, `runtime/layers.py`,
+and a **mounted TiTiler sub-app** (`runtime/tiler.py`) at `/tiler`. GDAL/rio-tiler
+config lives in `repo/`; keep boto3 there too. See [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ## 2. Building on This Starter Kit
 
 When this repo is used as the foundation for a new app, the following pieces are part of the starter contract — keep them. Adapt only what the new use case actually requires.
@@ -31,7 +37,8 @@ When this repo is used as the foundation for a new app, the following pieces are
 - The sidebar nav itself (Dashboard, Upload, Files, Settings, plus the Design System utility link).
 
 **Adapt to the new use case**
-- **Dashboard.** `/` route and `apps/web/src/components/dashboard/` (stats cards, upload chart, recent uploads table) are illustrative defaults. Replace them with metrics, charts, and tables that reflect what the new app actually does (e.g. transcripts processed, embeddings indexed, classifications run). New aggregations must flow through the same `runtime -> service -> repo` layering and be exposed via TanStack Query hooks in `apps/web/src/lib/queries.ts` — no bare `useEffect + fetch`.
+- **Dashboard.** `/` route and `apps/web/src/components/dashboard/` are illustrative defaults. This sample adapts them to **geospatial metrics** (layers, raster bytes in B2, megapixels, tiles served) via `useLayerStats`. New aggregations must flow through the same `runtime -> service -> repo` layering and be exposed via TanStack Query hooks in `apps/web/src/lib/queries.ts` — no bare `useEffect + fetch`.
+- **Sample-scoped explorer.** This sample adds a `/layers` COG Layer library (scoped to the sample prefix) **alongside** the untouched full-bucket `/files` explorer, plus a "Layers" sidebar entry.
 - Update `docs/features/dashboard.md` in the same PR as any dashboard change (see §9).
 
 **Why this contract exists**

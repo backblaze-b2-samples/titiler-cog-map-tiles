@@ -71,3 +71,67 @@ export interface UploadStats {
   uploads_today: number;
   total_downloads: number;
 }
+
+// --- COG map Layers (this sample's primary entity) ---
+
+export type BandPreset = "single" | "rgb";
+export type Resampling = "nearest" | "bilinear" | "cubic";
+export type SampleKind = "elevation" | "rgb";
+
+/** How a layer is painted into tiles. Re-tunable live in the map viewer. */
+export interface RenderConfig {
+  band_preset: BandPreset;
+  colormap: string;
+  rescale_min: number | null;
+  rescale_max: number | null;
+  resampling: Resampling;
+  bidx: number;
+}
+
+export interface LayerSummary {
+  id: string;
+  name: string;
+  size_bytes: number;
+  size_human: string;
+  band_count: number;
+  dtype: string;
+  minzoom: number;
+  maxzoom: number;
+  bounds: number[]; // [w, s, e, n] WGS84
+  uploaded_at: string;
+}
+
+export interface LayerDetail extends LayerSummary {
+  center: number[]; // [lng, lat, zoom]
+  width: number;
+  height: number;
+  overview_levels: number;
+  colorinterp: string[];
+  render: RenderConfig;
+  /** App-relative tile template; prepend API_BASE and append render params. */
+  tiles: string;
+  colormaps: string[];
+  band_presets: string[];
+  resamplings: string[];
+}
+
+export interface LayerStats {
+  layer_count: number;
+  total_bytes: number;
+  total_bytes_human: string;
+  total_megapixels: number;
+  tiles_served: number;
+}
+
+export interface GenerateLayerRequest {
+  name: string;
+  kind: SampleKind;
+  /** Optional initial render overrides; omit to let the server auto-pick. */
+  colormap?: string | null;
+  band_preset?: BandPreset | null;
+}
+
+export interface UpdateLayerRequest {
+  name: string;
+  render: RenderConfig;
+}

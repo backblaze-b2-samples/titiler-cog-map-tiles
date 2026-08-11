@@ -1,68 +1,31 @@
-<!-- last_verified: 2026-08-06 -->
-# Vibe Coding Starter Kit
+<!-- last_verified: 2026-08-11 -->
+# TiTiler COG Map Tiles
 
-Stop wiring boilerplate and start building. This open-source starter kit gives vibe coders and AI coding agents a well-engineered foundation — a full-stack TypeScript + Python template with a pre-built dashboard UI, file upload system, and **[Backblaze B2](https://www.backblaze.com/sign-up/ai-cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-oss-start)** cloud storage already integrated. Save thousands of tokens on setup prompts, skip the "build me a dashboard from scratch" loop, and go straight to building your app's unique features.
+Serve dynamic **XYZ map tiles** straight from **Cloud-Optimized GeoTIFFs (COGs)**
+stored in **[Backblaze B2](https://www.backblaze.com/sign-up/ai-cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-titiler-cog)** — no
+intermediate tile server holding a second copy of the data. [TiTiler](https://github.com/developmentseed/titiler)
+(FastAPI + rio-tiler + GDAL) reads only the COG byte-ranges it needs from B2 over
+the **S3-compatible API** and renders each tile on demand, so one growing raster
+archive (50–500 GB per mission) is served directly, with **zero duplication**.
 
-Explore the [Vibe Coding Starter Kit project page](https://backblazelabs.com/projects/vibe-coding-starter-kit/), the official [Backblaze B2 AI integrations and sample applications](https://www.backblaze.com/cloud-storage/b2-ai-integrations) directory, and the checked-in [local OpenAPI contract](docs/api/openapi.json).
+This is a full-stack sample for **geospatial platform teams and mapping
+developers**: ingest a raster (converted to a COG and uploaded to B2), browse the
+layer library, tune render settings, view it live on an interactive Leaflet map,
+and delete it — all with **B2 credentials only. No second API key, no external
+model, no GPU.**
+
+Explore the [TiTiler COG Map Tiles project page](https://backblazelabs.com/projects/titiler-cog-map-tiles/), the official [Backblaze B2 AI integrations and sample applications](https://www.backblaze.com/cloud-storage/b2-ai-integrations?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-titiler-cog) directory, and the checked-in [local OpenAPI contract](docs/api/openapi.json).
 
 **What you get out of the box:**
-- Full-stack dashboard UI (Next.js 16 + React 19 + Tailwind v4 + shadcn/ui)
-- File upload with drag-and-drop, progress tracking, and metadata extraction
-- File browser with preview, download, and delete
-- FastAPI backend with strict layered architecture and structural tests
-- Agent-optimized docs — your AI coding agent can read the repo and start contributing immediately
-
-## What it looks like
-
-**Dashboard** — stats, upload activity, and recent uploads at a glance:
-
-![Dashboard view showing stat cards, upload activity chart, and recent uploads table](docs/images/b2-starterkit-dashboard1.png)
-
-**File browser** — tree view with preview, download, and delete:
-
-![File browser view showing a tree of files with hover actions](docs/images/b2-starterkit-fileview2.png)
+- A **Layer** lifecycle end-to-end — create (upload GeoTIFF → COG, or generate a synthetic sample), read (library + detail), edit (render config), delete, and run (live map).
+- **Dynamic tile serving** — TiTiler mounted as a sub-app, reading COG Range-GETs from B2 through GDAL's `/vsis3/`.
+- **Interactive map viewer** — Leaflet (keyless OpenStreetMap base tiles) with live band/colormap/rescale controls.
+- **Geospatial dashboard** — number of layers, total raster bytes in B2, total megapixels, and tiles served.
+- Full-stack scaffold: Next.js 16 + React 19 + Tailwind v4 + shadcn/ui frontend, FastAPI backend with strict layered architecture, an OpenAPI contract test, and agent-optimized docs.
 
 ## Quick Start
 
-You need: Node.js >= 20, pnpm >= 9, Python >= 3.12, and a free **[Backblaze B2 account](https://www.backblaze.com/sign-up/ai-cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-oss-start)**.
-
-### Supported local environments
-
-Local scripts are supported on macOS, Linux, and WSL2. Native Windows is not
-supported yet because the dev scripts use POSIX shell syntax and
-`services/api/.venv/bin/*` paths; use WSL2 on Windows.
-
-Cloud or sandboxed coding-agent environments also need permission for dependency
-downloads during `pnpm run setup`. Running the app or Playwright E2E requires
-localhost server binding for the web server on port 3000 and the API on
-8000-8009, plus permission to launch the Playwright Chromium browser. If a
-sandbox denies binding, `pnpm run doctor` and `scripts/pick-port.mjs` report
-`EPERM`/`EACCES` as a permissions issue instead of a busy port. A host without
-IPv6 (many containers) is not treated as a failure — the IPv4 probe decides.
-
-### Start a new project
-
-**Option 1: GitHub Template (recommended)**
-
-Click the green **"Use this template"** button at the top of this repo, name your project, then:
-
-```bash
-git clone https://github.com/yourorg/my-cool-app.git
-cd my-cool-app
-```
-
-**Option 2: Clone and reinitialize**
-
-```bash
-git clone https://github.com/backblaze-b2-samples/vibe-coding-starter-kit.git my-cool-app
-cd my-cool-app
-rm -rf .git
-git init
-git add .
-git commit -m "Initial commit from vibe-coding-starter-kit"
-```
-
-Either way you get a clean project with no upstream history — ready to push to your own repo and point your agent at it.
+You need: Node.js >= 20, pnpm >= 9, Python >= 3.12, and a free **[Backblaze B2 account](https://www.backblaze.com/sign-up/ai-cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-titiler-cog)**. `rasterio` wheels bundle GDAL, so there is **no system GDAL/PROJ install** on macOS arm64 or Linux.
 
 ### Setup
 
@@ -72,12 +35,12 @@ Either way you get a clean project with no upstream history — ready to push to
 pnpm run setup
 ```
 
-This copies `.env.example` to `.env` only when `.env` does not already exist,
+This copies `.env.example` to `.env` (only when `.env` does not already exist),
 installs workspace dependencies from `pnpm-lock.yaml`, creates
 `services/api/.venv` if missing, validates that an existing venv uses Python
 3.12+, and installs the API's committed Python 3.12 resolution from
-`services/api/requirements.lock`. It is safe to rerun and never overwrites an
-existing `.env`.
+`services/api/requirements.lock` (including `titiler.core`, `rio-tiler`,
+`rasterio`, and `rio-cogeo`). Safe to rerun; never overwrites an existing `.env`.
 
 > Use the `pnpm run` form: `setup` (like `doctor`) is a built-in pnpm command
 > before pnpm 11, so bare `pnpm setup` would run pnpm's own command instead of
@@ -85,16 +48,19 @@ existing `.env`.
 
 **2. Add your B2 credentials**
 
-Open `.env` in your editor and keep it visible. Then head to the [Backblaze B2 dashboard](https://secure.backblaze.com/b2_buckets.htm?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-oss-start) and:
+Open `.env` and fill in the canonical `B2_*` values. From the [Backblaze B2 dashboard](https://secure.backblaze.com/b2_buckets.htm?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-titiler-cog):
 
-1. **Create a bucket.** B2 will show two values — paste each into `.env`:
+1. **Create a bucket** and note:
    - **Bucket Unique Name** → `B2_BUCKET_NAME`
-   - **Endpoint** → `B2_ENDPOINT`
-2. **Create an application key** with `Read and Write` permission. B2 will show two values — paste each into `.env`:
-   - **keyID** → `B2_KEY_ID`
-   - **applicationKey** → `B2_APPLICATION_KEY` *(only shown once — paste it now)*
+   - The region embedded in its endpoint (e.g. `us-west-005`) → `B2_REGION`
+2. **Create an application key** with `Read and Write` permission:
+   - **keyID** → `B2_APPLICATION_KEY_ID`
+   - **applicationKey** → `B2_APPLICATION_KEY` *(shown once — paste it now)*
 
-> Want a walkthrough? See the docs for [creating a bucket](https://www.backblaze.com/docs/cloud-storage-create-and-manage-buckets) and [creating app keys](https://www.backblaze.com/docs/cloud-storage-create-and-manage-app-keys).
+The S3 endpoint is derived as `https://s3.{B2_REGION}.backblazeb2.com`; GDAL's
+tile-read path uses the same host. `B2_PUBLIC_URL_BASE` is optional.
+
+> Walkthrough: [creating a bucket](https://www.backblaze.com/docs/cloud-storage-create-and-manage-buckets?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-titiler-cog) and [creating app keys](https://www.backblaze.com/docs/cloud-storage-create-and-manage-app-keys?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-titiler-cog).
 
 **3. Run it**
 
@@ -102,122 +68,89 @@ Open `.env` in your editor and keep it visible. Then head to the [Backblaze B2 d
 pnpm dev
 ```
 
-That's it. Frontend at `localhost:3000`, API at `localhost:8000`. Upload a file and see it working. Interactive API docs (Swagger UI) are at `localhost:8000/docs`, with ReDoc at `/redoc`.
+Frontend at `localhost:3000`, API at `localhost:8000`. Open **Layers → New
+layer → Generate sample layer** to create a synthetic, georeferenced COG in B2
+and see it painted live on the map. Interactive API docs (Swagger UI) are at
+`localhost:8000/docs`.
 
-`pnpm dev` runs the preflight check first — it catches the common setup gotchas (wrong Node/Python version, missing venv, missing or placeholder `.env`, ports already taken) and tells you exactly how to fix each one. Run it standalone any time with `pnpm run doctor`.
+`pnpm dev` runs the preflight `pnpm run doctor` first — it catches the common
+setup gotchas (wrong Node/Python version, missing venv, missing or placeholder
+`.env`, ports already taken) and tells you how to fix each one.
+
+## How it works
+
+```
+Browser (Leaflet)                    FastAPI                      Backblaze B2
+  │  OSM base tiles (keyless)                                         │
+  │  <img> COG tiles ─────────▶  /tiler  (mounted TiTiler) ── GDAL ──▶│  COG byte-ranges
+  │  layer metadata ──────────▶  /layers (own contract) ── boto3 ────▶│  COG + sidecar JSON
+```
+
+- **Management path — boto3** (`repo/b2_client.py`, `repo/layer_store.py`):
+  stores each layer's COG + a small render-config sidecar JSON, lists the
+  library, and deletes. Sets `user_agent_extra="b2ai-titiler-cog"`.
+- **Tile-read path — GDAL / rio-tiler** (`repo/gdal_s3.py`, `repo/cog_reader.py`):
+  TiTiler reads `s3://<bucket>/<prefix>/layers/<id>.tif` byte-ranges via GDAL's
+  `/vsis3/`. GDAL has no boto3 client, so its custom user agent is set via the
+  `GDAL_HTTP_USERAGENT` env var — the **same** `b2ai-titiler-cog` token.
+
+TiTiler is mounted as a **sub-app** at `/tiler`, so its raster routes stay out of
+this sample's OpenAPI contract. The tiler only ever accepts a validated `layer`
+id (never a raw `?url=`), which it maps to a path **inside the sample prefix** —
+an SSRF-safe constraint. See [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## When to use
 
-Use this repository as a template or sample implementation when you want to
-clone or fork a working file-management dashboard, connect it to your own B2
-bucket, and then rebrand and extend it for your application. It provides
-production-minded engineering controls—including strict architecture,
-contract checks, tests, linting, and deployment runbooks—so you can begin with
-a dependable scaffold instead of a blank prototype.
+Use this repository when you need to serve dynamic map tiles from large rasters
+you already keep (or want to keep) in object storage, without standing up and
+paying for a tile server that duplicates the data. It is a working reference for
+the COG-on-B2 + TiTiler pattern, with production-minded controls (strict
+architecture, contract checks, tests, deployment runbooks) you can adapt.
 
 ## When not to use
 
-Do not choose this repository expecting a complete hosted SaaS product or a
-drop-in production service. It does not provide managed hosting, user accounts,
-authentication, tenant isolation, billing, or on-call operations. Before using
-an adapted application in production, you own its product-specific security,
-operations, capacity, compliance, and support decisions.
-
-## Building Your App
-
-When you adapt this kit for a new app, keep the shared scaffolding and only swap out what's app-specific:
-
-- **Keep** the UI kit (`apps/web/src/components/ui/` + design tokens in `globals.css` + `/design`).
-- **Keep** the File Explorer (`/files`) and Upload (`/upload`) pages and their sidebar nav entries — they're the reusable B2-backed surface.
-- **Adapt** the Dashboard (`/`) to your use case — replace the default stats, chart, and recent uploads with metrics that reflect what your app actually does.
-- **Rebrand** by editing a single file: `apps/web/src/lib/app-config.ts` holds the app name and description (`APP_NAME`, `APP_DESCRIPTION`). Changing them there updates the page title, sidebar, and breadcrumb everywhere — no other files to touch.
-
-Full contract and rationale: [AGENTS.md §2 — Building on This Starter Kit](AGENTS.md#2-building-on-this-starter-kit).
-
-## Agent-First Architecture
-
-This repo is optimized for coding agents. Use the template, point your agent at it, and start building.
-
-The structure follows the principle that **repository knowledge is the system of record**. Anything an agent can't access in-context doesn't exist — so everything it needs to reason about the codebase is versioned, co-located, and discoverable from the repo itself.
-
-### How it works
-
-**[AGENTS.md](AGENTS.md) is the single source of truth for all coding agents.** Its bounded, agent-sized entry point gives agents the repository layout, architectural invariants, commands, conventions, and pointers to deeper docs. Agent-specific files (CLAUDE.md, GEMINI.md, Copilot instructions, etc.) are thin pointers back to AGENTS.md.
-
-**Architecture is enforced mechanically, not by convention.** Layering rules, import boundaries, backend application Python file-size limits, and SDK containment are verified by structural tests and lints that run on every change. When rules are enforceable by code, agents follow them reliably.
-
-**The knowledge base is structured for progressive disclosure:**
-
-```
-AGENTS.md              Single source of truth — layout, invariants, commands, conventions
-ARCHITECTURE.md        System layout, layering rules, data flows
-docs/
-  features/            Feature docs (inputs, outputs, flows, edge cases)
-  app-workflows.md     User journeys
-  dev-workflows.md     Engineering workflows and testing
-  SECURITY.md          Security principles
-  RELIABILITY.md       Reliability expectations
-  exec-plans/          Execution plans and tech debt tracker
-```
-
-### Key design decisions
-
-| Principle | Implementation |
-|-----------|---------------|
-| Give agents a single source of truth | AGENTS.md — bounded layout, invariants, commands, conventions |
-| Enforce invariants mechanically | Structural tests + ruff + ESLint verify boundaries |
-| DRY documentation | Each fact lives in one place; no redundant files to drift |
-| Strict layered architecture | `types -> config -> repo -> service -> runtime`, enforced by tests |
-| Prefer boring, composable libraries | stdlib logging over frameworks, Pydantic over ad-hoc validation |
-| Contain external SDKs | `boto3` only in `repo/` layer — verified by structural test |
-| Keep files agent-sized | 300-line limit per file, enforced by test |
-| Docs updated with code | Same-PR requirement prevents documentation rot |
-| Structured observability | JSON logging, `/metrics` endpoint, request tracing |
-
-This approach draws from [OpenAI's experience building with Codex](https://openai.com/index/harness-engineering/): agents work best in environments with strict boundaries, predictable structure, and progressive context disclosure.
+Do not expect a complete hosted SaaS product. It ships no managed hosting, user
+accounts, authentication, tenant isolation, or billing — the API is
+single-tenant and unauthenticated by design. It is not a full GIS platform
+(no vector layers, styling server, or analysis pipeline). You own the
+product-specific security, operations, and compliance decisions for anything you
+adapt to production.
 
 ## Core Features
 
-- [File Upload](docs/features/file-upload.md) — drag-and-drop upload with real-time progress
-- [File Browser](docs/features/file-browser.md) — list, preview, download, delete files
-- [Dashboard](docs/features/dashboard.md) — stats cards, upload chart, recent uploads
-- [Metadata Extraction](docs/features/metadata-extraction.md) — image dimensions, EXIF, PDF info, checksums
-- [Design System](docs/design-system.md) — tokens, primitives, AI elements, the blaze generating loader, and inline `ErrorState` / `EmptyState` patterns. Live preview at `/design`.
-- Inline error handling — fetch failures surface *what's wrong* (API offline, 401, 5xx) and offer a Retry, instead of silently rendering empty state.
-- Single-source config — one `.env` at the repo root powers both API and web app, validated at startup so misconfig fails fast with a readable message.
-- Centralized data layer — every fetch goes through TanStack Query hooks in `apps/web/src/lib/queries.ts`; cache invalidation is one call after a mutation.
-- Checked local API contract — [`docs/api/openapi.json`](docs/api/openapi.json) plus `pnpm contract:check` catch FastAPI/client route drift; it describes the template API you run, not a hosted public endpoint.
-- Structural tests — verify layering rules, import boundaries, SDK containment, and backend application Python file-size limits
-- Structured JSON logging — every request traced with `request_id` and timing
-- `/health` endpoint — B2 connectivity check
-- `/metrics` endpoint — Prometheus-format counters (request count, latency, uploads)
-- `/docs` + `/redoc` — auto-generated interactive API docs (toggle off in prod with `ENABLE_DOCS=false`)
-- Per-IP rate limiting and magic-byte upload validation — see [SECURITY.md](docs/SECURITY.md)
+- [COG Ingest](docs/features/cog-ingest.md) — GeoTIFF → valid COG (rio-cogeo, internal overviews) → B2, plus a keyless "Generate sample layer" action.
+- [Tile Serving](docs/features/tile-serving.md) — TiTiler + GDAL Range-GETs from B2; the custom-UA-via-env note.
+- [Map Viewer](docs/features/map-viewer.md) — Leaflet + react-leaflet@5, keyless OSM base tiles, live render controls.
+- [Layer Library](docs/features/layer-library.md) — the sample-scoped explorer at `/layers`.
+- [COG Info](docs/features/cog-info.md) — bounds, bands, dtype, overviews, zoom range via rio-tiler.
+- [Dashboard](docs/features/dashboard.md) — geospatial metrics (layers, raster bytes, megapixels, tiles served).
+- [File Browser](docs/features/file-browser.md) — the untouched full-bucket `/files` explorer, kept from the starter.
+- [Design System](docs/design-system.md) — tokens, primitives, error/empty patterns. Live at `/design`.
 
 ## Tech Stack
 
-- TypeScript, Next.js 16, React 19, Tailwind v4, shadcn/ui, Recharts
-- TanStack Query — caching, dedup, retry, stale-while-revalidate for every fetch
-- Python 3.12+, FastAPI, boto3, Pydantic v2, Pillow, PyPDF2
-- Backblaze B2 (S3-compatible object storage)
+- TypeScript, Next.js 16, React 19, Tailwind v4, shadcn/ui, Leaflet + react-leaflet@5
+- TanStack Query — caching, dedup, retry for every fetch
+- Python 3.12+, FastAPI, boto3, Pydantic v2, TiTiler (`titiler.core`), rio-tiler, rasterio (bundled GDAL), rio-cogeo, numpy
+- Backblaze B2 (S3-compatible object storage) — the only backing store, no second copy of the data
 - pnpm workspaces (monorepo)
 
 ## Commands
 
 | Command | What it does |
 |---------|-------------|
-| `pnpm run setup` | Idempotently copy `.env.example` to `.env` only if missing, install workspace dependencies, create the backend venv, and install the locked API dependencies |
+| `pnpm run setup` | Idempotently copy `.env.example` to `.env` if missing, install workspace deps, create the backend venv, install the locked API dependencies |
 | `pnpm run doctor` | Preflight environment check (also runs automatically before `pnpm dev`) |
 | `pnpm dev` | Start frontend + backend |
 | `pnpm dev:web` | Frontend only |
 | `pnpm dev:api` | Backend only |
 | `pnpm contract:export` | Export deterministic FastAPI OpenAPI JSON to `docs/api/openapi.json` |
 | `pnpm contract:check` | Verify the checked-in OpenAPI artifact and frontend API client route registry |
-| `pnpm check:agent-docs` | Validate agent shims, command docs, CI claims, and `.env` ignore coverage |
+| `pnpm check:agent-docs` | Validate agent shims, command docs, CI claims, `.env` ignore coverage, and one-token branding |
 | `pnpm verify` | Credential-free canonical non-live pre-PR suite — runs `check:agent-docs`, `verify:api`, then `verify:web` |
 | `pnpm verify:api` | Backend half: API lint, API tests, structure tests |
 | `pnpm verify:web` | Frontend half: web lint, web unit tests, web typecheck + build |
-| `pnpm verify:full` | `pnpm run doctor`, then `pnpm verify`, then Playwright E2E; requires populated `.env`, local server/browser permission, port 3000 free, and Chromium installed |
+| `pnpm verify:full` | `pnpm run doctor`, then `pnpm verify`, then Playwright E2E; requires populated `.env`, local server/browser permission, and port 3000 free |
 | `pnpm build` | Build frontend |
 | `pnpm lint` | Lint frontend |
 | `pnpm lint:api` | Lint backend (ruff) |
@@ -225,131 +158,116 @@ This approach draws from [OpenAI's experience building with Codex](https://opena
 | `pnpm test:api` | Run backend tests |
 | `pnpm test:live:b2` | Opt-in real B2 connectivity test; requires `RUN_LIVE_B2_TESTS=1` and non-production credentials |
 | `pnpm check:structure` | Verify layering rules |
-| `pnpm test:e2e` | Playwright E2E smoke tests (run `pnpm --filter @vibe-coding-starter-kit/web exec playwright install chromium` once first) |
+| `pnpm test:e2e` | Playwright E2E smoke tests (run `pnpm --filter @titiler-cog-map-tiles/web exec playwright install chromium` once first) |
 
-Run `pnpm run setup` once before local development, and rerun it after pulling
-dependency changes. It installs workspace dependencies from `pnpm-lock.yaml`
-and API dependencies from `services/api/requirements.lock`. If you add a Node
-dependency yourself, run `pnpm install` to refresh `pnpm-lock.yaml`; for an API
+Run `pnpm run setup` once before local development and rerun it after pulling
+dependency changes. If you add a Node dependency, run `pnpm install`; for an API
 dependency, follow the reviewed refresh workflow in
 [docs/dev-workflows.md](docs/dev-workflows.md#python-dependency-updates). Run
-`pnpm verify` before opening a PR; it needs
-`services/api/.venv` from setup. Run `pnpm verify:full` when you can start the
-local app stack and browser tests: `.env` must contain real B2 values, local
-server binding must be permitted, Playwright's Chromium browser must be
-installed, and port 3000 must be free (or already serving this app). Playwright
-waits on `http://localhost:3000`,
-but `next dev` falls back to the next free port when 3000 is taken — so an
-unrelated process on 3000 makes the E2E run time out. The API starts at
-`localhost:8000` or the next free port chosen by `scripts/dev.sh`.
-
-`pnpm verify` needs neither B2 credentials nor a browser. For parallel agents,
-use one Git worktree per verification run as documented in [the verification
-workflow](docs/dev-workflows.md#non-live-verification). That page also covers
-normal timing, slow-run recovery, and installing the optional local pre-commit
-hooks.
+`pnpm verify` (which needs neither B2 credentials nor a browser) before opening a
+PR; it needs `services/api/.venv` from setup. Use `pnpm verify:full` when you can
+start the local app stack with real B2 values in `.env` and a Chromium browser
+installed.
 
 ## Deploying to Vercel
 
-This starter deploys to Vercel as **one project** using Vercel
-[Services](https://vercel.com/docs/services): the Next.js web app and the
-FastAPI API build from the same repo and share a single origin — the web app at
-`/` and the API under `/api`. One click, one project, **no CORS and no wiring
-two URLs together**.
+This sample deploys to Vercel as **one project** using Vercel
+[Services](https://vercel.com/docs/services): the Next.js web app and the FastAPI
+API build from the same repo and share a single origin — the web app at `/` and
+the API under `/api`. One click, one project, no CORS and no wiring two URLs
+together.
 
-[![Deploy to Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbackblaze-b2-samples%2Fvibe-coding-starter-kit&project-name=vcsk&env=B2_KEY_ID,B2_APPLICATION_KEY,B2_ENDPOINT,B2_BUCKET_NAME&envDescription=B2%20credentials%20and%20bucket&envLink=https%3A%2F%2Fgithub.com%2Fbackblaze-b2-samples%2Fvibe-coding-starter-kit%2Fblob%2Fmain%2Finfra%2Fvercel%2FREADME.md)
+[![Deploy to Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbackblaze-b2-samples%2Ftitiler-cog-map-tiles&project-name=titiler-cog-map-tiles&env=B2_APPLICATION_KEY_ID,B2_APPLICATION_KEY,B2_BUCKET_NAME,B2_REGION&envDescription=B2%20credentials%2C%20bucket%2C%20and%20region&envLink=https%3A%2F%2Fgithub.com%2Fbackblaze-b2-samples%2Ftitiler-cog-map-tiles%2Fblob%2Fmain%2Finfra%2Fvercel%2FREADME.md)
 
-Set the B2 credentials and bucket. Uploads go **directly from the browser to
-B2** (presigned PUT), so Vercel's 4.5 MB Function payload limit doesn't apply
-and the starter's 100 MB default stays — one caveat: the bucket must allow your
-deploy origin in its CORS (see the
-[Vercel delivery contract](infra/vercel/README.md)). The web app reaches the API
-at the same-origin `/api` automatically, so **no `NEXT_PUBLIC_API_URL` is
-needed**; the repo-root `vercel.json` declares the `web` and `api` services and
-routes `/api/*` to FastAPI (which serves its native `/health`, `/files`, … paths
-— the Vercel-only `services/api/index.py` strips the `/api` prefix).
-
-The button clones the repo into your account as a quick preview. For the full
-variable classification, the two-separate-Projects alternative, security
-controls, preview/production process, `/health` verification, and rollback,
-follow the [Vercel delivery contract](infra/vercel/README.md). The API is
+Set the B2 credentials, bucket, and region. Map tiles are `<img>` requests
+(Leaflet), which are **not CORS-gated**, so the tile path needs no bucket CORS.
+The web app reaches the API at the same-origin `/api` automatically, so **no
+`NEXT_PUBLIC_API_URL` is needed**; the repo-root `vercel.json` declares the `web`
+and `api` services. Note that COG translation is CPU work in the API function —
+mind Vercel function size/timeout limits for large uploads. For the full variable
+classification, security controls, `/health` verification, and rollback, follow
+the [Vercel delivery contract](infra/vercel/README.md). The API is
 unauthenticated and bucket-wide, so use a dedicated B2 bucket/prefix and key for
-any preview. Deploying is a human-approved action — nothing here performs one
-for you.
+any preview. Deploying is a human-approved action — nothing here performs one for
+you.
 
 ## Documentation Map
 
 | Doc | Purpose |
 |-----|---------|
 | [AGENTS.md](AGENTS.md) | Agent table of contents — start here |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | System layout, layering, data flows |
-| [docs/features/](docs/features/) | Feature docs (upload, browser, dashboard, metadata) |
-| [docs/design-system.md](docs/design-system.md) | Design tokens, primitives, AI elements, loader, error/empty states |
-| [docs/app-workflows.md](docs/app-workflows.md) | User journeys |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System layout, layering, the two S3 access paths, the mounted tiler |
+| [docs/features/](docs/features/) | Feature docs (COG ingest, tile serving, map viewer, layer library, COG info, dashboard) |
+| [docs/app-workflows.md](docs/app-workflows.md) | Layer lifecycle user journeys |
 | [docs/dev-workflows.md](docs/dev-workflows.md) | Engineering workflows and testing |
-| [docs/SECURITY.md](docs/SECURITY.md) | Security principles |
+| [docs/SECURITY.md](docs/SECURITY.md) | Security principles (incl. the tiler SSRF constraint) |
 | [docs/RELIABILITY.md](docs/RELIABILITY.md) | Reliability expectations |
-| [docs/api/openapi.json](docs/api/openapi.json) | Checked contract for the template's local FastAPI API |
+| [docs/api/openapi.json](docs/api/openapi.json) | Checked contract for the sample's own FastAPI API |
 | [infra/vercel/README.md](infra/vercel/README.md) | Vercel deployment contract |
 | [docs/exec-plans/](docs/exec-plans/) | Execution plans and tech debt tracker |
 
 ## FAQ
 
-**What is the Vibe Coding Starter Kit?**
-An open-source, full-stack template (Next.js 16 + FastAPI) with a pre-built dashboard UI, drag-and-drop file upload, and file browser, with [Backblaze B2](https://www.backblaze.com/cloud-storage) cloud storage already integrated. You clone it, connect it to your own B2 bucket, then rebrand and extend it for your app.
+**What does TiTiler COG Map Tiles do?**
+It stores Cloud-Optimized GeoTIFFs in Backblaze B2 and serves dynamic XYZ map
+tiles from them on demand with TiTiler, which reads only the COG byte-ranges it
+needs over the S3 API. There is no pre-rendered tile pyramid and no second copy
+of the data.
+
+**Do I need a GPU or a second API key?**
+No. Every feature is CPU-only and keyless — COG translation and tile rendering
+are CPU raster work (GDAL). You provide only your B2 credentials.
 
 **Is it free?**
-Yes. The code is MIT-licensed (see [License](#license)), and Backblaze B2 offers a free account to get started.
+The code is MIT-licensed (see [License](#license)) and Backblaze B2 offers a free
+account to get started. You pay only for the B2 storage/egress you use.
 
-**Can I use it in production?**
-It's a template/sample Backblaze maintains to help developers get started with B2. Production use is possible with caution and requires your own validation — you own the product-specific security, operations, capacity, compliance, and support decisions for anything you adapt, and the repository software carries no SLA. See [When not to use](#when-not-to-use) and [Maintenance and support](#maintenance-and-support).
+**Why store rasters in B2 instead of a tile server?**
+A COG is internally tiled and has overviews, so a range-reader like GDAL can fetch
+just the bytes for one tile at one zoom. That means the bucket is the only copy —
+no tile server holding a duplicate pyramid, and one archive scales from GBs to TBs
+without a migration.
 
-**Does it include authentication, user accounts, or multi-tenant isolation?**
-No. It does not provide managed hosting, user accounts, authentication, tenant isolation, billing, or on-call operations. Add whatever your application requires on top of the scaffold.
+**Can I upload my own GeoTIFF?**
+Yes. `/layers/new → Upload GeoTIFF` converts a georeferenced GeoTIFF to a valid COG
+(with internal overviews) server-side and stores it in B2. A raster with no CRS is
+rejected with a clear error.
 
-**Do I have to use Backblaze B2?**
-It integrates Backblaze B2 through the S3-compatible API, and B2 is the storage the kit is built around. You supply your own B2 bucket and application key during setup.
+**Does it include authentication or multi-tenant isolation?**
+No. The API is single-tenant and unauthenticated by design. Add auth and
+per-tenant prefixes before exposing it to multiple users.
 
-**Is it really built for AI coding agents?**
-Yes. [AGENTS.md](AGENTS.md) is the single source of truth for coding agents, architectural boundaries are enforced mechanically by structural tests and lints (not by convention), and the docs use progressive disclosure — so an agent can read the repo and start contributing immediately.
-
-**What's the tech stack?**
-Frontend: TypeScript, Next.js 16, React 19, Tailwind v4, shadcn/ui, TanStack Query. Backend: Python 3.12+, FastAPI, boto3, Pydantic v2. Storage: Backblaze B2 (S3-compatible). See [Tech Stack](#tech-stack).
-
-**How do I rebrand it for my own app?**
-Edit a single file — `apps/web/src/lib/app-config.ts` (`APP_NAME`, `APP_DESCRIPTION`) — and the page title, sidebar, and breadcrumb update everywhere. See [Building Your App](#building-your-app).
-
-**How do I deploy it?**
-It deploys to Vercel as a single project — the web app and FastAPI API build from the same repo and share one origin (web at `/`, API under `/api`), so there's no CORS or second URL to wire up. A Railway path is also documented. Deploying is always a human-approved action — see [Deploying to Vercel](#deploying-to-vercel).
-
-**Does it work on Windows?**
-Local scripts are supported on macOS, Linux, and WSL2. Native Windows is not supported yet — use WSL2 on Windows.
+**How do I rebrand it?**
+Edit `apps/web/src/lib/app-config.ts` (`APP_NAME`, `APP_DESCRIPTION`); the title,
+sidebar, and breadcrumb update everywhere.
 
 **Where do I get help or report bugs?**
-Report repository defects and feature requests through [GitHub Issues](https://github.com/backblaze-b2-samples/vibe-coding-starter-kit/issues). For B2 account, billing, service, or API help, use [Backblaze Support](https://www.backblaze.com/help).
+Report repository defects through [GitHub Issues](https://github.com/backblaze-b2-samples/titiler-cog-map-tiles/issues). For B2 account, billing, or API help, use [Backblaze Support](https://www.backblaze.com/help?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-titiler-cog).
 
 ## Maintenance and support
 
-Backblaze maintains this open-source template/sample to help developers get
-started with B2. Production use is possible with caution and requires your own
-validation. Report repository defects and feature requests through
-[GitHub Issues](https://github.com/backblaze-b2-samples/vibe-coding-starter-kit/issues);
+Backblaze maintains this open-source sample to help developers build on B2.
+Production use is possible with caution and requires your own validation. Report
+repository defects through
+[GitHub Issues](https://github.com/backblaze-b2-samples/titiler-cog-map-tiles/issues);
 for B2 account, billing, service, or API help, use
-[Backblaze Support](https://www.backblaze.com/help). This template/sample is
-not covered by the Backblaze service level agreement, and no SLA is provided
-for the repository software; any B2 service or support commitments are governed
+[Backblaze Support](https://www.backblaze.com/help?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-titiler-cog). This sample is not
+covered by the Backblaze service level agreement, and no SLA is provided for the
+repository software; any B2 service or support commitments are governed
 separately by the applicable Backblaze terms and support plan.
 
 ## Contributing
 
-Start with [AGENTS.md](AGENTS.md). It's the map — everything else is discoverable from there. For local commit hooks, follow [the pre-commit workflow](docs/dev-workflows.md#pre-commit).
+Start with [AGENTS.md](AGENTS.md) — it's the map, and everything else is
+discoverable from there. For local commit hooks, follow [the pre-commit workflow](docs/dev-workflows.md#pre-commit).
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT License — see [LICENSE](LICENSE) for details.
 
 ## Claude Agent B2 Skill
 
-Manage Backblaze B2 from your terminal using natural language (list/search, audits, stale or large file detection, security checks, safe cleanup).
+Manage Backblaze B2 from your terminal using natural language (list/search,
+audits, stale or large file detection, security checks, safe cleanup).
 
 Repo: [https://github.com/backblaze-b2-samples/claude-skill-b2-cloud-storage](https://github.com/backblaze-b2-samples/claude-skill-b2-cloud-storage)

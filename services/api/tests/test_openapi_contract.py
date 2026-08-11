@@ -34,11 +34,13 @@ def test_openapi_metadata_uses_canonical_local_api_identity():
     schema = app.openapi()
 
     assert schema["info"] == {
-        "title": "Vibe Coding Starter Kit API",
+        "title": "TiTiler COG Map Tiles API",
         "description": (
-            "Local API for the Vibe Coding Starter Kit template, providing file "
-            "upload and management backed by Backblaze B2. This contract "
-            "documents the template's local API, not a hosted public endpoint."
+            "Local API for TiTiler COG Map Tiles: manage Cloud-Optimized "
+            "GeoTIFF map layers stored in Backblaze B2 and serve dynamic XYZ "
+            "tiles read straight from B2 by TiTiler. This contract documents "
+            "the sample's own management API; the mounted TiTiler tile sub-app "
+            "has its own schema and is not part of this contract."
         ),
         "version": "0.1.0",
     }

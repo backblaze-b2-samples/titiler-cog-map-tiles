@@ -8,19 +8,31 @@ import {
 } from "@tanstack/react-query";
 import {
   ApiError,
+  createLayer,
   deleteFile,
+  deleteLayer,
+  generateLayer,
   getDownloadUrl,
   getFileDetail,
   getFiles,
   getFileStats,
   getHealth,
+  getLayer,
+  getLayers,
+  getLayerStats,
   getPreviewUrl,
   getUploadActivity,
+  updateLayer,
 } from "@/lib/api-client";
 import type {
   FileMetadata,
   FileMetadataDetail,
-} from "@vibe-coding-starter-kit/shared";
+  GenerateLayerRequest,
+  LayerDetail,
+  LayerStats,
+  LayerSummary,
+  UpdateLayerRequest,
+} from "@titiler-cog-map-tiles/shared";
 
 // Single source of truth for query keys. Keep these tightly scoped so that
 // invalidating "files" doesn't blow away unrelated caches, and so an IDE
@@ -35,6 +47,9 @@ export const qk = {
   preview: (key: string) => [...qk.all, "preview", key] as const,
   detail: (key: string) => [...qk.all, "detail", key] as const,
   health: () => [...qk.all, "health"] as const,
+  layers: () => [...qk.all, "layers"] as const,
+  layer: (id: string) => [...qk.all, "layer", id] as const,
+  layerStats: () => [...qk.all, "layer-stats"] as const,
 };
 
 export type Health = Awaited<ReturnType<typeof getHealth>>;
@@ -166,6 +181,86 @@ export function useDeleteFile() {
       // activity) against the server in the background.
       dropDeletedFileFromCache(qc, fileKey);
       qc.invalidateQueries({ queryKey: qk.all });
+    },
+  });
+}
+
+// --- COG map Layers ------------------------------------------------------
+
+export function useLayers({ enabled = true }: QueryGate = {}) {
+  return useQuery<LayerSummary[], ApiError>({
+    queryKey: qk.layers(),
+    queryFn: getLayers,
+    enabled,
+  });
+}
+
+export function useLayer(id: string | undefined) {
+  return useQuery<LayerDetail, ApiError>({
+    queryKey: qk.layer(id ?? ""),
+    queryFn: () => getLayer(id as string),
+    enabled: !!id,
+  });
+}
+
+export function useLayerStats({ enabled = true }: QueryGate = {}) {
+  return useQuery<LayerStats, ApiError>({
+    queryKey: qk.layerStats(),
+    queryFn: getLayerStats,
+    enabled,
+  });
+}
+
+function invalidateLayers(qc: QueryClient) {
+  qc.invalidateQueries({ queryKey: qk.layers() });
+  qc.invalidateQueries({ queryKey: qk.layerStats() });
+}
+
+export function useCreateLayer() {
+  const qc = useQueryClient();
+  return useMutation<
+    LayerDetail,
+    ApiError,
+    {
+      file: File;
+      name: string;
+      resampling: string;
+      colormap?: string;
+      bandPreset?: string;
+    }
+  >({
+    mutationFn: ({ file, name, resampling, colormap, bandPreset }) =>
+      createLayer(file, name, resampling, colormap, bandPreset),
+    onSuccess: () => invalidateLayers(qc),
+  });
+}
+
+export function useGenerateLayer() {
+  const qc = useQueryClient();
+  return useMutation<LayerDetail, ApiError, GenerateLayerRequest>({
+    mutationFn: (req) => generateLayer(req),
+    onSuccess: () => invalidateLayers(qc),
+  });
+}
+
+export function useUpdateLayer(id: string) {
+  const qc = useQueryClient();
+  return useMutation<LayerDetail, ApiError, UpdateLayerRequest>({
+    mutationFn: (req) => updateLayer(id, req),
+    onSuccess: (data) => {
+      qc.setQueryData(qk.layer(id), data);
+      invalidateLayers(qc);
+    },
+  });
+}
+
+export function useDeleteLayer() {
+  const qc = useQueryClient();
+  return useMutation<{ deleted: boolean; id: string }, ApiError, string>({
+    mutationFn: (id) => deleteLayer(id),
+    onSuccess: (_data, id) => {
+      qc.removeQueries({ queryKey: qk.layer(id) });
+      invalidateLayers(qc);
     },
   });
 }

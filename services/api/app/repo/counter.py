@@ -26,7 +26,7 @@ _lock = Lock()
 
 
 def _counter_path() -> Path:
-    """Resolve the counter file path relative to the repo root.
+    """Resolve the download-counter file path relative to the repo root.
 
     The repo root — not services/api/ — on purpose: `uvicorn --reload` watches
     services/api/, so runtime state written there lands inside the reloader's
@@ -34,25 +34,33 @@ def _counter_path() -> Path:
     become a real API restart the moment someone adds `--reload-include`).
     Runtime state belongs outside the watched source tree.
     """
-    p = Path(settings.download_count_file)
+    return _resolve_path(settings.download_count_file)
+
+
+def _tiles_path() -> Path:
+    """Resolve the tiles-served counter file (same repo-root anchoring)."""
+    return _resolve_path(settings.tiles_served_file)
+
+
+def _resolve_path(path_str: str) -> Path:
+    p = Path(path_str)
     if not p.is_absolute():
         # Anchor at the repo root (repo/ -> app/ -> api/ -> services/ -> root).
         p = Path(__file__).resolve().parents[4] / p
     return p
 
 
-def _load() -> int:
-    """Read the persisted counter; return 0 if missing or unreadable."""
+def _load(path: Path) -> int:
+    """Read a persisted counter file; return 0 if missing or unreadable."""
     try:
-        with open(_counter_path()) as f:
+        with open(path) as f:
             return int(json.load(f).get("count", 0))
     except (FileNotFoundError, json.JSONDecodeError, ValueError, TypeError):
         return 0
 
 
-def _save(count: int) -> None:
-    """Atomically persist the counter. Caller must hold the lock."""
-    path = _counter_path()
+def _save(count: int, path: Path) -> None:
+    """Atomically persist a counter. Caller must hold the relevant lock."""
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         # Atomic write: tmp file in the same dir, then rename.
@@ -72,7 +80,12 @@ def _save(count: int) -> None:
         logger.warning("Failed to persist download counter: %s", e)
 
 
-_count = _load()
+_count = _load(_counter_path())
+# Tiles served (durable) — surfaced on the geospatial dashboard, incremented per
+# successful tile response by the tiler middleware. Same durability caveats and
+# same lock-then-persist-outside pattern as the download counter.
+_tiles_lock = Lock()
+_tiles_count = _load(_tiles_path())
 
 
 def get_download_count() -> int:
@@ -91,4 +104,17 @@ def increment_download_count() -> None:
     with _lock:
         _count += 1
         snapshot = _count
-    _save(snapshot)
+    _save(snapshot, _counter_path())
+
+
+def get_tiles_served() -> int:
+    with _tiles_lock:
+        return _tiles_count
+
+
+def increment_tiles_served() -> None:
+    global _tiles_count
+    with _tiles_lock:
+        _tiles_count += 1
+        snapshot = _tiles_count
+    _save(snapshot, _tiles_path())

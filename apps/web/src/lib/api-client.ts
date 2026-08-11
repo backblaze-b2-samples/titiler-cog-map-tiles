@@ -3,9 +3,14 @@ import type {
   FileMetadata,
   FileMetadataDetail,
   FileUploadResponse,
+  GenerateLayerRequest,
+  LayerDetail,
+  LayerStats,
+  LayerSummary,
   PresignUploadResponse,
+  UpdateLayerRequest,
   UploadStats,
-} from "@vibe-coding-starter-kit/shared";
+} from "@titiler-cog-map-tiles/shared";
 
 // Single-origin deploys (Vercel `services`: one project serving web + API) put
 // the API under /api on the same origin, so no NEXT_PUBLIC_API_URL is needed —
@@ -17,13 +22,21 @@ export const API_BASE =
   (process.env.NODE_ENV === "production" ? "/api" : "http://localhost:8000");
 
 type ApiClientRoute = {
-  method: "delete" | "get" | "post";
+  method: "delete" | "get" | "patch" | "post";
   path: string;
 };
 
 export const API_CLIENT_ROUTES = {
   health: { method: "get", path: "/health" },
   files: { method: "get", path: "/files" },
+  // COG map Layers (this sample's primary entity).
+  layers: { method: "get", path: "/layers" },
+  layerStats: { method: "get", path: "/layers/stats" },
+  layerCreate: { method: "post", path: "/layers" },
+  layerGenerate: { method: "post", path: "/layers/generate" },
+  layerDetail: { method: "get", path: "/layers/{layer_id}" },
+  layerUpdate: { method: "patch", path: "/layers/{layer_id}" },
+  layerDelete: { method: "delete", path: "/layers/{layer_id}" },
   fileStats: { method: "get", path: "/files/stats" },
   uploadActivity: { method: "get", path: "/files/stats/activity" },
   fileByKeyDownload: { method: "get", path: "/files-by-key/download" },
@@ -324,4 +337,76 @@ function putFileToStorage(
     }
     xhr.send(file);
   });
+}
+
+// --- COG map Layers ------------------------------------------------------
+
+function layerIdPath(template: string, id: string): string {
+  return template.replace("{layer_id}", encodeURIComponent(id));
+}
+
+export async function getLayers() {
+  return apiFetch<LayerSummary[]>(API_CLIENT_ROUTES.layers.path);
+}
+
+export async function getLayerStats() {
+  return apiFetch<LayerStats>(API_CLIENT_ROUTES.layerStats.path);
+}
+
+export async function getLayer(id: string) {
+  return apiFetch<LayerDetail>(layerIdPath(API_CLIENT_ROUTES.layerDetail.path, id));
+}
+
+/** Ingest a GeoTIFF: the API converts it to a COG and stores it in B2. Bytes
+ *  go through this JSON-free multipart POST; the browser sets the boundary. */
+export async function createLayer(
+  file: File,
+  name: string,
+  resampling: string,
+  colormap?: string,
+  bandPreset?: string
+): Promise<LayerDetail> {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("name", name);
+  form.append("resampling", resampling);
+  if (colormap) form.append("colormap", colormap);
+  if (bandPreset) form.append("band_preset", bandPreset);
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${API_CLIENT_ROUTES.layerCreate.path}`, {
+      method: API_CLIENT_ROUTES.layerCreate.method.toUpperCase(),
+      body: form,
+    });
+  } catch {
+    throw networkError();
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(body.detail || `API error: ${res.status}`, res.status);
+  }
+  return res.json();
+}
+
+export async function generateLayer(req: GenerateLayerRequest) {
+  return apiFetch<LayerDetail>(API_CLIENT_ROUTES.layerGenerate.path, {
+    method: API_CLIENT_ROUTES.layerGenerate.method.toUpperCase(),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+}
+
+export async function updateLayer(id: string, req: UpdateLayerRequest) {
+  return apiFetch<LayerDetail>(layerIdPath(API_CLIENT_ROUTES.layerUpdate.path, id), {
+    method: API_CLIENT_ROUTES.layerUpdate.method.toUpperCase(),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+}
+
+export async function deleteLayer(id: string) {
+  return apiFetch<{ deleted: boolean; id: string }>(
+    layerIdPath(API_CLIENT_ROUTES.layerDelete.path, id),
+    { method: API_CLIENT_ROUTES.layerDelete.method.toUpperCase() }
+  );
 }

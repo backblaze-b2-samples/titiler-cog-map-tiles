@@ -4,19 +4,22 @@
 ## Components
 
 - **apps/web/** — Next.js 16 frontend (App Router, Tailwind v4, shadcn/ui)
-  - Dashboard with stats, upload chart, recent uploads
-  - File upload with drag-and-drop, progress tracking
-  - File browser with preview, download, delete
+  - Geospatial dashboard (layers, raster bytes, megapixels, tiles served)
+  - `/layers` COG **Layer** library (sample-scoped) + create / detail pages
+  - Interactive Leaflet map viewer (react-leaflet@5, keyless OSM base tiles)
+  - The untouched full-bucket `/files` explorer and `/upload` from the starter
   - Dark mode via `next-themes`
 - **services/api/** — FastAPI backend (layered architecture)
-  - REST API for file upload, listing, deletion
-  - B2 S3 integration via boto3
-  - File metadata extraction (images, PDFs)
-  - Health check endpoint with B2 connectivity verification
-  - Structured JSON logging with request tracing
-  - Prometheus-format metrics endpoint
+  - Layer management REST API (create/read/update/delete + generate + stats)
+  - **Two S3 access paths to B2** (both S3-compatible, same UA token):
+    boto3 for storage (`repo/b2_client.py`, `repo/layer_store.py`) and
+    GDAL/rio-tiler for COG Range-GETs (`repo/gdal_s3.py`, `repo/cog_reader.py`)
+  - GeoTIFF → COG conversion with internal overviews (`repo/cog_build.py`,
+    rio-cogeo) and a synthetic seed generator (`repo/cog_seed.py`)
+  - A **mounted TiTiler sub-app** at `/tiler` for on-demand XYZ tiles
+  - Health, structured JSON logging, and Prometheus-format metrics
 - **packages/shared/** — TypeScript type definitions
-  - Mirrors Pydantic models from the API
+  - Mirrors Pydantic models from the API (incl. the Layer models)
   - Consumed by `apps/web/` as workspace dependency
 
 ## Backend Layering
@@ -47,14 +50,23 @@ runtime/   FastAPI routes — calls service, never repo directly
 
 ```
 services/api/
-  main.py                  App entrypoint, middleware, router registration
+  main.py                  App entrypoint, middleware, router registration,
+                           mounts the TiTiler sub-app, applies GDAL/VSI-S3 config
   app/
-    types/                 Pydantic models (FileMetadata, UploadStats, etc.)
-    config/                Settings loaded from environment
-    repo/                  B2 S3 client (data access layer)
-    service/               Business logic (upload, files, metadata)
-    runtime/               FastAPI route handlers
-  tests/                   pytest tests (structural + integration)
+    types/                 Pydantic models (layers.py, files.py, stats.py, …)
+    config/                Settings loaded from environment (B2_* + sample prefix)
+    repo/                  Data access:
+                             b2_client.py / layer_store.py  (boto3 storage)
+                             gdal_s3.py                     (GDAL VSI-S3 config)
+                             cog_reader.py                  (rio-tiler info)
+                             cog_build.py / cog_seed.py     (rio-cogeo translate)
+                             counter.py                     (download + tiles counters)
+    service/               Business logic (layers.py, files.py, upload.py)
+    runtime/               FastAPI route handlers:
+                             layers.py   (Layer management contract)
+                             tiler.py     (mounted TiTiler sub-app + SSRF gate)
+  scripts/                 export_openapi.py, setup_b2_cors.py
+  tests/                   pytest tests (structural + integration + COG pipeline)
 ```
 
 ## Boundary Invariants
@@ -78,25 +90,61 @@ services/api/
   share one origin — the web app at `/`, the API under `/api`. The repo-root
   `vercel.json` declares both services and routes `/api/*` to the API service;
   the Vercel-only `services/api/index.py` strips the `/api` prefix so FastAPI
-  keeps its native paths (`/health`, `/files`, …). Uploads go directly from the
-  browser to B2 via a presigned PUT (see
-  [File Upload](docs/features/file-upload.md)), so they bypass the Function's
-  4.5 MB payload ceiling entirely — the bucket must allow the deploy origin in
-  its CORS. A two-separate-Projects alternative and the full delivery contract
+  keeps its native paths (`/health`, `/files`, `/layers`, …). The kept `/upload`
+  flow sends bytes directly from the browser to B2 via a presigned PUT, so it
+  bypasses the Function's 4.5 MB payload ceiling (COG ingest via `POST /layers`,
+  by contrast, is a server-side multipart translate — mind function size/timeout
+  limits for large uploads). Map tiles are `<img>` requests and are not
+  CORS-gated. A two-separate-Projects alternative and the full delivery contract
   live in [infra/vercel/README.md](infra/vercel/README.md).
 
 External provisioning and deployment remain explicit user-approved actions.
 
+## Two S3 access paths to B2
+
+Both paths are S3-compatible (**no b2-native API**) and both carry the same
+attribution token `b2ai-titiler-cog`:
+
+1. **Management — boto3** (`repo/b2_client.py`, `repo/layer_store.py`): stores
+   each layer's COG (`<prefix>layers/<id>.tif`) + a render-config sidecar
+   (`<id>.json`), lists the library, HEADs, deletes, and presigns. Sets
+   `Config(user_agent_extra="b2ai-titiler-cog")`.
+2. **Tile reads — GDAL / rio-tiler** (`repo/gdal_s3.py`): TiTiler reads COG
+   byte-ranges from `s3://<bucket>/<prefix>layers/<id>.tif` via GDAL's
+   `/vsis3/`. GDAL has no boto3 client, so its custom user agent is set through
+   `GDAL_HTTP_USERAGENT` — the only mechanism GDAL offers (analogous to the
+   DuckDB `http_agent` / PyArrow cases). `configure_gdal_s3()` sets the VSI-S3
+   env (`AWS_S3_ENDPOINT` host-only, path-style, `GDAL_DISABLE_READDIR_ON_OPEN`,
+   range/merge tuning, the UA) from `B2_*` at startup, before rasterio's first
+   open.
+
+## Mounted TiTiler sub-app
+
+TiTiler is mounted via `app.mount("/tiler", build_tiler_app())`, **not**
+`include_router`. A mounted app has its own OpenAPI, so TiTiler's raster routes
+stay out of `docs/api/openapi.json` and the contract tests. The browser reads
+only image tiles from it (Leaflet `<img>` requests, not CORS-gated); all metadata
+the UI needs comes from the app's own `/layers` endpoints. The tiler's
+`path_dependency` accepts a validated `layer` id and maps it to a path **inside
+the sample prefix**, rejecting anything else — it never exposes a raw `?url=`
+(SSRF-safe). A tiny middleware increments the durable `tiles_served` counter on
+each successful tile response.
+
 ## Data Stores
 
 - **Backblaze B2** — object storage (S3-compatible API)
-  - All uploaded files stored in a single bucket
-  - File listing and metadata via S3 `list_objects_v2` / `head_object`
-  - No application database — B2 is the sole data store
+  - Layers live under the sample prefix `titiler-cog-map-tiles/layers/`: a COG
+    `.tif` object plus a small render-config `.json` sidecar per layer
+  - Listing/metadata via S3 `list_objects_v2` / `head_object`; COG geospatial
+    metadata via rio-tiler over Range-GETs
+  - No application database — B2 is the sole data store (durable counters persist
+    to small local JSON files)
 
 ## External Services
 
-- **Backblaze B2 S3 API** — file storage, retrieval, deletion, presigned URLs
+- **Backblaze B2 S3 API** — COG + sidecar storage, listing, deletion, presigned
+  URLs, and COG byte-range reads for tile rendering
+- **OpenStreetMap tile server** — keyless base map tiles (`tile.openstreetmap.org`)
 
 ## Trust Boundaries
 
@@ -108,10 +156,23 @@ See [docs/SECURITY.md](docs/SECURITY.md) for full security documentation.
 
 ## Data Flows
 
-- **Upload**: Browser -> `POST /upload/presign` (API validates the declared file + signs a PUT) -> Browser PUTs bytes **directly to B2** -> `POST /upload/verify` (API HEADs + Range-sniffs the stored object) -> response
-- **List**: Browser -> `GET /files` -> service calls repo -> returns file list
-- **Download**: Browser -> `GET /files/{key}/download` -> service validates key -> repo generates presigned URL -> browser downloads
-- **Delete**: Browser -> `DELETE /files/{key}` -> service validates key -> repo deletes from B2
+Layer lifecycle:
+
+- **Create (upload)**: Browser -> `POST /layers` (multipart GeoTIFF) -> service
+  `geotiff_to_cog` (rio-cogeo) -> read info from the in-memory COG -> `put_object`
+  COG + sidecar to B2 -> `LayerDetail`
+- **Create (generate)**: Browser -> `POST /layers/generate` -> `build_sample_cog`
+  (numpy + rasterio + rio-cogeo, georeferenced over a real bbox) -> store in B2
+- **Read**: `GET /layers` (library, from sidecars) and `GET /layers/{id}` (detail
+  + tile template)
+- **Run (tiles)**: Leaflet requests `GET /tiler/tiles/{tms}/{z}/{x}/{y}.png?layer=<id>&…`
+  -> TiTiler reads COG Range-GETs from B2 via GDAL -> renders a PNG -> tiles_served++
+- **Edit**: Browser -> `PATCH /layers/{id}` -> service rewrites the sidecar JSON
+- **Delete**: Browser -> `DELETE /layers/{id}` -> repo deletes the COG + sidecar
+  (scoped to the sample prefix)
+
+The full-bucket `/files` explorer and `/upload` flows from the starter are kept
+unchanged.
 
 ## Observability
 
@@ -134,23 +195,29 @@ silently drift from FastAPI. `GET /metrics` is intentionally server-only.
 
 ## Canonical Files
 
-- Layered API handler: `services/api/app/runtime/upload.py`
-- Service orchestration: `services/api/app/service/upload.py`
-- B2 data access (repo layer): `services/api/app/repo/b2_client.py`
-- Pydantic models: `services/api/app/types/` (`files.py`, `upload.py`, `stats.py`, `formatting.py`)
+- Layer routes (runtime): `services/api/app/runtime/layers.py`
+- Mounted tiler + SSRF gate: `services/api/app/runtime/tiler.py`
+- Layer service orchestration: `services/api/app/service/layers.py`
+- B2 storage (repo): `services/api/app/repo/b2_client.py`, `repo/layer_store.py`
+- GDAL VSI-S3 config (repo): `services/api/app/repo/gdal_s3.py`
+- COG read / translate / seed (repo): `repo/cog_reader.py`, `repo/cog_build.py`, `repo/cog_seed.py`
+- Pydantic models: `services/api/app/types/layers.py` (+ `files.py`, `stats.py`)
 - Config (pydantic-settings): `services/api/app/config/settings.py`
 - Structural tests: `services/api/tests/test_structure.py`
+- COG pipeline test: `services/api/tests/test_cog_pipeline.py`
 - OpenAPI contract: `docs/api/openapi.json`
-- OpenAPI exporter: `services/api/scripts/export_openapi.py`
-- Frontend API client: `apps/web/src/lib/api-client.ts`
+- Frontend API client / tile URL builder: `apps/web/src/lib/api-client.ts`, `lib/layer-render.ts`
 - Shared TypeScript types: `packages/shared/src/types.ts`
 
 ## Core Features
 
-- [File Upload](docs/features/file-upload.md)
-- [File Browser](docs/features/file-browser.md)
+- [COG Ingest](docs/features/cog-ingest.md)
+- [Tile Serving](docs/features/tile-serving.md)
+- [Map Viewer](docs/features/map-viewer.md)
+- [Layer Library](docs/features/layer-library.md)
+- [COG Info](docs/features/cog-info.md)
 - [Dashboard](docs/features/dashboard.md)
-- [Metadata Extraction](docs/features/metadata-extraction.md)
+- [File Browser](docs/features/file-browser.md)
 
 ## References
 

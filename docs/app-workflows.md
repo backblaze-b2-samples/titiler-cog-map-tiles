@@ -1,22 +1,60 @@
-<!-- last_verified: 2026-08-06 -->
+<!-- last_verified: 2026-08-11 -->
 # App Workflows
 
-User journeys inside the application.
+User journeys inside the application. The primary entity is the **Layer** (one
+COG in B2 + a render-config sidecar); all five verbs are in the UI.
 
-## Upload Files
+## Create a layer (create)
 
-- User navigates to `/upload`
-- Drops or selects files in the dropzone
-- Client validates file size (max 100MB) and type
-- Files upload **directly from the browser to B2** (a presigned PUT). A determinate progress bar tracks the bytes leaving the browser; once they are all sent the row switches to "Verifying upload..." with an *indeterminate* sweeping bar while the API HEADs and magic-byte-sniffs the stored object. That phase has no percentage to report, and a bar parked at a full 100% read as finished-but-stuck
-- On success: toast notification, green checkmark, and a "View in Files" link through to the browser
-- On failure: red status icon with error message
-- User can clear completed uploads
-- The queue lives in an app-wide provider: navigating to another page keeps the upload running, shows an "Uploading N files" indicator in the header, and keeps the duplicate-upload guard armed
-- Reloading or closing mid-upload asks for confirmation first; if the upload dies anyway, the next load says which file didn't finish
-- See: [File Upload](features/file-upload.md)
+- User navigates to `/layers/new`
+- Picks a **source** (a RadioGroup, not free text): "Generate sample layer"
+  (default — works with zero data or key) or "Upload GeoTIFF"
+- Names the layer (`e.g. sf-elevation`) and optionally sets render defaults
+  (colormap Select, band-preset RadioGroup — both default to "Auto (from raster)")
+- **Generate**: `POST /layers/generate` builds a synthetic, georeferenced COG
+  server-side (San Francisco bbox) and stores it in B2
+- **Upload**: the chosen GeoTIFF is sent to `POST /layers`, converted to a valid
+  COG with internal overviews (rio-cogeo), and stored in B2. A raster with no CRS
+  is rejected with a clear message
+- On success: a toast, and the app navigates to the new layer's detail page
+- See: [COG Ingest](features/cog-ingest.md)
 
-## Browse and Manage Files
+## Browse the layer library (read)
+
+- User navigates to `/layers`
+- The table lists every COG in the sample prefix with name, bands, dtype, zoom
+  range, and size (newest first)
+- A row links to the layer's detail; a row action deletes it
+- Empty state offers a "New layer" CTA
+- See: [Layer Library](features/layer-library.md)
+
+## View a layer on the map (run)
+
+- User opens `/layers/[id]`
+- A Leaflet map (keyless OSM base) centers on the layer's real-world bounds and
+  overlays the COG's tiles, rendered on demand by TiTiler straight from B2
+- The "Live render" controls re-tune the view instantly by changing the tile URL:
+  band preset (RadioGroup), colormap (Select), rescale min/max (numeric), and
+  resampling (Select). This map + controls ARE the run verb — nothing is
+  pre-rendered
+- A "COG info" panel shows bounds, bands, dtype, dimensions, megapixels,
+  overviews, and zoom range
+- See: [Map Viewer](features/map-viewer.md), [Tile Serving](features/tile-serving.md)
+
+## Edit a layer's render settings (edit)
+
+- On `/layers/[id]`, "Edit" opens a dialog **pre-filled** from the layer's sidecar
+- The user renames the layer and changes its default render config, then saves
+- `PATCH /layers/{id}` rewrites the sidecar JSON; the detail refreshes
+- See: [Map Viewer](features/map-viewer.md)
+
+## Delete a layer (delete)
+
+- From a library row or the detail page, "Delete" opens an AlertDialog confirm
+- Confirming calls `DELETE /layers/{id}`, which removes the COG **and** its sidecar
+  from B2 (scoped to the sample prefix), then the row/page updates
+
+## Browse the full bucket (kept from the starter)
 
 - User navigates to `/files`
 - Page loads the 100 most recent objects from the API (sorted most recent first). While it loads, the page says so on screen and escalates the wording if the wait runs long — a full bucket listing measured 2.8s-21s cold
@@ -34,12 +72,11 @@ User journeys inside the application.
 ## View Dashboard
 
 - User navigates to `/` (home)
-- Three parallel API calls load: stats, recent files, upload activity — all served from one shared bucket listing that the API warms at startup
-- While stats load, the page states it in words above the cards rather than showing silent skeletons
-- Stats cards show: total files, storage used, uploads today, total downloads
-- Upload chart shows last 7 days of upload activity as bar chart
-- Recent uploads table shows last 10 files with filename, size, type, date. Each filename links to that file's preview on `/files` — `/files` teaches "click a file to preview it", so the same gesture here has to answer rather than being inert text
-- Empty state: "No files uploaded yet" messages
+- Stat cards show geospatial metrics: number of COG layers, total raster bytes in
+  B2, total megapixels, and tiles served
+- A recent-layers table links each layer to its detail page
+- A "How it works" card explains the COG-on-B2 + TiTiler pattern
+- Empty state: prompts to create the first layer
 - See: [Dashboard](features/dashboard.md)
 
 ## Change Preferences

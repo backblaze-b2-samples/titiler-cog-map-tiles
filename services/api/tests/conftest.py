@@ -92,3 +92,14 @@ def isolate_download_counter(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "download_count_file", str(counter_path))
     monkeypatch.setattr(counter, "_count", 0)
     yield
+
+
+@pytest.fixture(autouse=True)
+def isolate_tiles_counter(tmp_path, monkeypatch):
+    """Same isolation for the durable tiles-served counter."""
+    from app.config import settings
+    from app.repo import counter
+
+    monkeypatch.setattr(settings, "tiles_served_file", str(tmp_path / "tiles_served.json"))
+    monkeypatch.setattr(counter, "_tiles_count", 0)
+    yield

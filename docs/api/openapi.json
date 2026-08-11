@@ -1,6 +1,52 @@
 {
   "components": {
     "schemas": {
+      "Body_create_layer_endpoint_layers_post": {
+        "properties": {
+          "band_preset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Band Preset"
+          },
+          "colormap": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Colormap"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "resampling": {
+            "default": "nearest",
+            "title": "Resampling",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "name"
+        ],
+        "title": "Body_create_layer_endpoint_layers_post",
+        "type": "object"
+      },
       "DailyUploadCount": {
         "properties": {
           "date": {
@@ -294,6 +340,54 @@
         "title": "FileUploadResponse",
         "type": "object"
       },
+      "GenerateLayerRequest": {
+        "properties": {
+          "band_preset": {
+            "anyOf": [
+              {
+                "enum": [
+                  "single",
+                  "rgb"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Band Preset"
+          },
+          "colormap": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Colormap"
+          },
+          "kind": {
+            "default": "elevation",
+            "enum": [
+              "elevation",
+              "rgb"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "GenerateLayerRequest",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -305,6 +399,224 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "LayerDetail": {
+        "properties": {
+          "band_count": {
+            "title": "Band Count",
+            "type": "integer"
+          },
+          "band_presets": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Band Presets",
+            "type": "array"
+          },
+          "bounds": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Bounds",
+            "type": "array"
+          },
+          "center": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Center",
+            "type": "array"
+          },
+          "colorinterp": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Colorinterp",
+            "type": "array"
+          },
+          "colormaps": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Colormaps",
+            "type": "array"
+          },
+          "dtype": {
+            "title": "Dtype",
+            "type": "string"
+          },
+          "height": {
+            "title": "Height",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "maxzoom": {
+            "title": "Maxzoom",
+            "type": "integer"
+          },
+          "minzoom": {
+            "title": "Minzoom",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "overview_levels": {
+            "title": "Overview Levels",
+            "type": "integer"
+          },
+          "render": {
+            "$ref": "#/components/schemas/RenderConfig"
+          },
+          "resamplings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Resamplings",
+            "type": "array"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "size_human": {
+            "title": "Size Human",
+            "type": "string"
+          },
+          "tiles": {
+            "title": "Tiles",
+            "type": "string"
+          },
+          "uploaded_at": {
+            "format": "date-time",
+            "title": "Uploaded At",
+            "type": "string"
+          },
+          "width": {
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "size_bytes",
+          "size_human",
+          "band_count",
+          "dtype",
+          "minzoom",
+          "maxzoom",
+          "bounds",
+          "uploaded_at",
+          "center",
+          "width",
+          "height",
+          "overview_levels",
+          "colorinterp",
+          "render",
+          "tiles"
+        ],
+        "title": "LayerDetail",
+        "type": "object"
+      },
+      "LayerStats": {
+        "properties": {
+          "layer_count": {
+            "title": "Layer Count",
+            "type": "integer"
+          },
+          "tiles_served": {
+            "title": "Tiles Served",
+            "type": "integer"
+          },
+          "total_bytes": {
+            "title": "Total Bytes",
+            "type": "integer"
+          },
+          "total_bytes_human": {
+            "title": "Total Bytes Human",
+            "type": "string"
+          },
+          "total_megapixels": {
+            "title": "Total Megapixels",
+            "type": "number"
+          }
+        },
+        "required": [
+          "layer_count",
+          "total_bytes",
+          "total_bytes_human",
+          "total_megapixels",
+          "tiles_served"
+        ],
+        "title": "LayerStats",
+        "type": "object"
+      },
+      "LayerSummary": {
+        "properties": {
+          "band_count": {
+            "title": "Band Count",
+            "type": "integer"
+          },
+          "bounds": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Bounds",
+            "type": "array"
+          },
+          "dtype": {
+            "title": "Dtype",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "maxzoom": {
+            "title": "Maxzoom",
+            "type": "integer"
+          },
+          "minzoom": {
+            "title": "Minzoom",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "size_human": {
+            "title": "Size Human",
+            "type": "string"
+          },
+          "uploaded_at": {
+            "format": "date-time",
+            "title": "Uploaded At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "size_bytes",
+          "size_human",
+          "band_count",
+          "dtype",
+          "minzoom",
+          "maxzoom",
+          "bounds",
+          "uploaded_at"
+        ],
+        "title": "LayerSummary",
         "type": "object"
       },
       "PresignUploadRequest": {
@@ -371,6 +683,81 @@
           "expires_in"
         ],
         "title": "PresignUploadResponse",
+        "type": "object"
+      },
+      "RenderConfig": {
+        "description": "How a layer is painted into tiles. Persisted in the sidecar; re-tunable\nlive in the map viewer by changing the tile URL query params.",
+        "properties": {
+          "band_preset": {
+            "default": "single",
+            "enum": [
+              "single",
+              "rgb"
+            ],
+            "title": "Band Preset",
+            "type": "string"
+          },
+          "bidx": {
+            "default": 1,
+            "title": "Bidx",
+            "type": "integer"
+          },
+          "colormap": {
+            "default": "terrain",
+            "title": "Colormap",
+            "type": "string"
+          },
+          "resampling": {
+            "default": "nearest",
+            "enum": [
+              "nearest",
+              "bilinear",
+              "cubic"
+            ],
+            "title": "Resampling",
+            "type": "string"
+          },
+          "rescale_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rescale Max"
+          },
+          "rescale_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rescale Min"
+          }
+        },
+        "title": "RenderConfig",
+        "type": "object"
+      },
+      "UpdateLayerRequest": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "render": {
+            "$ref": "#/components/schemas/RenderConfig"
+          }
+        },
+        "required": [
+          "name",
+          "render"
+        ],
+        "title": "UpdateLayerRequest",
         "type": "object"
       },
       "UploadStats": {
@@ -463,8 +850,8 @@
     }
   },
   "info": {
-    "description": "Local API for the Vibe Coding Starter Kit template, providing file upload and management backed by Backblaze B2. This contract documents the template's local API, not a hosted public endpoint.",
-    "title": "Vibe Coding Starter Kit API",
+    "description": "Local API for TiTiler COG Map Tiles: manage Cloud-Optimized GeoTIFF map layers stored in Backblaze B2 and serve dynamic XYZ tiles read straight from B2 by TiTiler. This contract documents the sample's own management API; the mounted TiTiler tile sub-app has its own schema and is not part of this contract.",
+    "title": "TiTiler COG Map Tiles API",
     "version": "0.1.0"
   },
   "openapi": "3.1.0",
@@ -977,6 +1364,264 @@
         "summary": "Health",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/layers": {
+      "get": {
+        "operationId": "list_layers_endpoint_layers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LayerSummary"
+                  },
+                  "title": "Response List Layers Endpoint Layers Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Layers Endpoint",
+        "tags": [
+          "layers"
+        ]
+      },
+      "post": {
+        "description": "Ingest a GeoTIFF: convert to a COG (rio-cogeo, internal overviews) and\nstore it in B2 under the sample prefix. ``colormap``/``band_preset`` are\noptional initial render overrides (unset = auto from the raster).",
+        "operationId": "create_layer_endpoint_layers_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_layer_endpoint_layers_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayerDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Layer Endpoint",
+        "tags": [
+          "layers"
+        ]
+      }
+    },
+    "/layers/generate": {
+      "post": {
+        "description": "Generate a synthetic sample COG server-side (keyless) and store it in\nB2, so the demo works with zero user-supplied data.",
+        "operationId": "generate_layer_endpoint_layers_generate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateLayerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayerDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Generate Layer Endpoint",
+        "tags": [
+          "layers"
+        ]
+      }
+    },
+    "/layers/stats": {
+      "get": {
+        "operationId": "layer_stats_endpoint_layers_stats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayerStats"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Layer Stats Endpoint",
+        "tags": [
+          "layers"
+        ]
+      }
+    },
+    "/layers/{layer_id}": {
+      "delete": {
+        "operationId": "delete_layer_endpoint_layers__layer_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "layer_id",
+            "required": true,
+            "schema": {
+              "title": "Layer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Layer Endpoint",
+        "tags": [
+          "layers"
+        ]
+      },
+      "get": {
+        "operationId": "get_layer_endpoint_layers__layer_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "layer_id",
+            "required": true,
+            "schema": {
+              "title": "Layer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayerDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Layer Endpoint",
+        "tags": [
+          "layers"
+        ]
+      },
+      "patch": {
+        "operationId": "update_layer_endpoint_layers__layer_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "layer_id",
+            "required": true,
+            "schema": {
+              "title": "Layer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLayerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayerDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Layer Endpoint",
+        "tags": [
+          "layers"
         ]
       }
     },

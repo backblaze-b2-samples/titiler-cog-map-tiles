@@ -2,11 +2,23 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    b2_endpoint: str = "https://s3.us-west-004.backblazeb2.com"
-    b2_key_id: str = ""
+    # --- Backblaze B2 (S3-compatible API) ---------------------------------
+    # Canonical B2_* names (Standard #3). The S3 endpoint is DERIVED from the
+    # region so no host string is hardcoded in source; b2_endpoint is an
+    # optional escape hatch for a non-standard host (left empty by default).
+    b2_application_key_id: str = ""
     b2_application_key: str = ""
     b2_bucket_name: str = ""
-    b2_public_url: str = ""
+    b2_region: str = ""
+    b2_endpoint: str = ""
+    # Public base URL for a PUBLIC bucket; used only to build object URLs. The
+    # app runs without it (presigned reads still work on a private bucket).
+    b2_public_url_base: str = ""
+
+    # Every object this sample writes lives under one prefix in the bucket, so
+    # the sample-scoped Layer library never collides with the full-bucket
+    # /files explorer or other apps sharing the bucket.
+    sample_prefix: str = "titiler-cog-map-tiles/"
 
     api_port: int = 8000
     # Interactive API docs (/docs, /redoc, /openapi.json). On by default for
@@ -68,6 +80,9 @@ class Settings(BaseSettings):
     # on every download — but a single added `--reload-include` would turn a
     # normal user action into an API restart that drops in-flight requests.
     download_count_file: str = ".data/download_count.json"
+    # Durable "tiles served" counter — same durability caveats as the download
+    # counter above, and kept OUTSIDE services/api/ for the same --reload reason.
+    tiles_served_file: str = ".data/tiles_served.json"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
@@ -76,6 +91,22 @@ class Settings(BaseSettings):
         # Drop empties so a trailing comma or API_CORS_ORIGINS="" doesn't yield
         # a stray "" origin.
         return [o.strip() for o in self.api_cors_origins.split(",") if o.strip()]
+
+    @property
+    def s3_endpoint(self) -> str:
+        """Full S3 endpoint URL (scheme + host).
+
+        Derived from ``b2_region`` unless ``b2_endpoint`` is set explicitly, so
+        a rebrand/redeploy only ever needs to change the region.
+        """
+        if self.b2_endpoint:
+            return self.b2_endpoint
+        return f"https://s3.{self.b2_region}.backblazeb2.com"
+
+    @property
+    def s3_endpoint_host(self) -> str:
+        """Endpoint host with no scheme (what GDAL's AWS_S3_ENDPOINT wants)."""
+        return self.s3_endpoint.split("://", 1)[-1]
 
 
 settings = Settings()

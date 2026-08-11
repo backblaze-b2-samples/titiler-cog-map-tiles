@@ -1,5 +1,5 @@
 {
-  "name": "@vibe-coding-starter-kit/web",
+  "name": "@titiler-cog-map-tiles/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -24,10 +24,11 @@
     "@radix-ui/react-switch": "^1.2.6",
     "@tanstack/react-query": "^5.100.7",
     "@tanstack/react-table": "^8.21.3",
-    "@vibe-coding-starter-kit/shared": "workspace:*",
+    "@titiler-cog-map-tiles/shared": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.563.0",
     "next": "16.1.6",
     "next-themes": "^0.4.6",
@@ -36,6 +37,7 @@
     "react-dom": "19.2.3",
     "react-dropzone": "^15.0.0",
     "react-hook-form": "^7.73.1",
+    "react-leaflet": "^5.0.0",
     "recharts": "2.15.4",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
@@ -44,6 +46,7 @@
   "devDependencies": {
     "@playwright/test": "^1.52.0",
     "@tailwindcss/postcss": "^4",
+    "@types/leaflet": "^1.9.22",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

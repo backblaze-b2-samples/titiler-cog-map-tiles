@@ -1,18 +1,16 @@
 "use client";
 
-import { FileIcon, HardDrive, Upload, Download } from "lucide-react";
+import { Layers, HardDrive, Grid2x2, Image } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/error-state";
 import { LoadingNotice } from "@/components/common/loading-notice";
-import { useFileStats } from "@/lib/queries";
+import { useLayerStats } from "@/lib/queries";
 
+/** Geospatial dashboard metrics, all derived from the COG layers in B2. */
 export function StatsCards() {
-  const { data: stats, isLoading, error, refetch } = useFileStats();
+  const { data: stats, isLoading, error, refetch } = useLayerStats();
 
-  // Surface fetch failures inline rather than rendering "0 files / 0 B" —
-  // that lies to the user about the bucket state when really the API is
-  // just unreachable.
   if (error) {
     return (
       <Card>
@@ -24,20 +22,19 @@ export function StatsCards() {
   }
 
   const cards = [
-    { title: "Total Files", value: stats?.total_files ?? 0, icon: FileIcon },
-    { title: "Storage Used", value: stats?.total_size_human ?? "0 B", icon: HardDrive },
-    { title: "Uploads Today", value: stats?.uploads_today ?? 0, icon: Upload },
-    { title: "Total Downloads", value: stats?.total_downloads ?? 0, icon: Download },
+    { title: "COG Layers", value: stats?.layer_count ?? 0, icon: Layers },
+    { title: "Raster Bytes in B2", value: stats?.total_bytes_human ?? "0 B", icon: HardDrive },
+    {
+      title: "Total Megapixels",
+      value: stats ? stats.total_megapixels.toFixed(1) : "0.0",
+      icon: Grid2x2,
+    },
+    { title: "Tiles Served", value: stats?.tiles_served ?? 0, icon: Image },
   ];
 
   return (
     <>
-      {/* Stats need a full bucket listing, which measured ~8s on a 16k-object
-          bucket. Four blank skeleton cards said nothing about that; this states
-          it in words and escalates if the wait keeps going. */}
-      {isLoading && (
-        <LoadingNotice className="mb-3" subject="bucket stats" />
-      )}
+      {isLoading && <LoadingNotice className="mb-3" subject="layer stats" />}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((card, i) => (
           <Card

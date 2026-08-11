@@ -18,8 +18,15 @@ from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 
 from app.config import settings  # noqa: E402
-from app.runtime import files, health, metrics, ratelimit, upload  # noqa: E402
+from app.repo.gdal_s3 import configure_gdal_s3  # noqa: E402
+from app.runtime import files, health, layers, metrics, ratelimit, upload  # noqa: E402
+from app.runtime.tiler import build_tiler_app, tiles_served_middleware  # noqa: E402
 from app.service.files import warm_listing_cache  # noqa: E402
+
+# Apply GDAL/VSI-S3 config from B2_* at import time — rasterio/rio-tiler read the
+# GDAL env the first time a dataset is opened, so it must be set before any tile
+# request. Kept in repo/gdal_s3.py (boto3/GDAL stays in repo/).
+configure_gdal_s3()
 
 # --- Startup validation ---
 # Required B2 settings are declared with empty-string defaults so that
@@ -29,20 +36,20 @@ from app.service.files import warm_listing_cache  # noqa: E402
 # line, so misconfiguration is obvious within seconds rather than turning
 # into mysterious 500s on the first request.
 REQUIRED_B2_SETTINGS = (
-    ("b2_key_id", "B2_KEY_ID"),
+    ("b2_application_key_id", "B2_APPLICATION_KEY_ID"),
     ("b2_application_key", "B2_APPLICATION_KEY"),
     ("b2_bucket_name", "B2_BUCKET_NAME"),
-    ("b2_endpoint", "B2_ENDPOINT"),
+    ("b2_region", "B2_REGION"),
 )
 
 # Exact placeholder strings shipped in .env.example. If a user copied
 # the example and didn't edit it, Settings will pass the "non-empty"
 # check above but every B2 call will still 403. Catch that here.
 PLACEHOLDER_VALUES = frozenset({
-    "your_b2_endpoint",
-    "your_key_id",
+    "your_application_key_id",
     "your_application_key",
     "your-bucket-name",
+    "your-region",
 })
 
 
@@ -110,11 +117,13 @@ logger = logging.getLogger("api")
 
 # --- App setup ---
 
-API_TITLE = "Vibe Coding Starter Kit API"
+API_TITLE = "TiTiler COG Map Tiles API"
 API_DESCRIPTION = (
-    "Local API for the Vibe Coding Starter Kit template, providing file upload "
-    "and management backed by Backblaze B2. This contract documents the "
-    "template's local API, not a hosted public endpoint."
+    "Local API for TiTiler COG Map Tiles: manage Cloud-Optimized GeoTIFF map "
+    "layers stored in Backblaze B2 and serve dynamic XYZ tiles read straight "
+    "from B2 by TiTiler. This contract documents the sample's own management "
+    "API; the mounted TiTiler tile sub-app has its own schema and is not part "
+    "of this contract."
 )
 API_VERSION = "0.1.0"
 
@@ -146,6 +155,11 @@ app = FastAPI(
 # is a normal response that timing records and CORS still wraps with headers.
 app.add_middleware(BaseHTTPMiddleware, dispatch=ratelimit.rate_limit_middleware)
 
+# Tiles-served counter. Increments the durable counter on a successful tile
+# response from the mounted TiTiler sub-app (matched by path). Registered here
+# so it sits inside timing/CORS like the other app middleware.
+app.add_middleware(BaseHTTPMiddleware, dispatch=tiles_served_middleware)
+
 # Request ID + timing middleware. Its except-clause is the catch-all
 # that turns uncaught exceptions into a typed 500 — see metrics.timing_middleware.
 app.add_middleware(BaseHTTPMiddleware, dispatch=metrics.timing_middleware)
@@ -169,4 +183,14 @@ app.add_middleware(
 app.include_router(health.router, tags=["health"])
 app.include_router(upload.router, tags=["upload"])
 app.include_router(files.router, tags=["files"])
+app.include_router(layers.router, tags=["layers"])
 app.include_router(metrics.router, tags=["metrics"])
+
+# TiTiler is mounted as a SUB-APP (not include_router): a mounted app has its
+# OWN OpenAPI, so TiTiler's ~15 raster routes stay OUT of docs/api/openapi.json
+# and the contract test / SERVER_ONLY_OPERATIONS list stay clean. The browser
+# only ever reads image tiles from it (<img> via Leaflet L.tileLayer), which are
+# not CORS-gated. Every piece of metadata the UI needs comes from our own
+# /layers endpoints. The tiler's dataset path is constrained by a path
+# dependency to s3://<bucket>/<sample-prefix>/layers/<id>.tif (SSRF-safe).
+app.mount("/tiler", build_tiler_app(), name="tiler")
