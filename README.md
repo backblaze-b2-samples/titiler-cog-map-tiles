@@ -14,8 +14,6 @@ layer library, tune render settings, view it live on an interactive Leaflet map,
 and delete it — all with **B2 credentials only. No second API key, no external
 model, no GPU.**
 
-Explore the official [Backblaze B2 AI integrations and sample applications](https://www.backblaze.com/cloud-storage/b2-ai-integrations?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-titiler-cog) directory and the checked-in [local OpenAPI contract](docs/api/openapi.json).
-
 **What you get out of the box:**
 - A **Layer** lifecycle end-to-end — create (upload GeoTIFF → COG, or generate a synthetic sample), read (library + detail), edit (render config), delete, and run (live map).
 - **Dynamic tile serving** — TiTiler mounted as a sub-app, reading COG Range-GETs from B2 through GDAL's `/vsis3/`.
