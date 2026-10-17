@@ -17,7 +17,7 @@ PyPDF2>=3.0.0
 # + a titiler.core that matches that rio-tiler + rio-cogeo>=5.
 numpy>=1.26.0
 rasterio>=1.4.0
-rio-tiler>=6.6.0
+rio-tiler>=9.4.2
 rio-cogeo>=5.3.0
 titiler-core>=0.18.0
 
